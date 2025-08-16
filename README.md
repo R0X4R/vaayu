@@ -38,7 +38,6 @@
 - **📥 Get** — Remote → Local with wildcard expansion
 - **🔄 Relay** — Remote → Remote without local download
 
----
 
 ## 🏗️ Architecture
 
@@ -49,7 +48,6 @@ Built on enterprise-grade foundations:
 - **Watchdog** — Filesystem monitoring for live sync
 - **zstd** — Optional compression pipeline (future enhancement)
 
----
 
 ## 🚀 Quick Start
 
@@ -74,7 +72,6 @@ pip install -e .
 vaayu --help
 ```
 
----
 
 ## 📚 Command Reference
 
@@ -103,7 +100,6 @@ vaayu --help
 | `get` | Transfer files from remote to local |
 | `relay` | Transfer files between two remote hosts |
 
----
 
 ## 💼 Usage Examples
 
@@ -210,7 +206,6 @@ vaayu -u alice -i ~/.ssh/id_ed25519 -r 10 -b 1.0 send alice@server.com /backup f
 vaayu -u alice -i ~/.ssh/id_ed25519 -c -z 6 send alice@server.com /backup archive.tar
 ```
 
----
 
 ## 🔧 Performance Tuning
 
@@ -229,7 +224,6 @@ vaayu -u alice -i ~/.ssh/id_ed25519 -c -z 6 send alice@server.com /backup archiv
 vaayu -u user -j 8 -r 3 -b 0.2 send user@host /dest /large/dataset/
 ```
 
----
 
 ## 🛡️ Security Features
 
@@ -250,7 +244,6 @@ vaayu -u user -j 8 -r 3 -b 0.2 send user@host /dest /large/dataset/
 - **Atomic Writes** (`.part` → rename)
 - **Multiple Remote Hash Sources**
 
----
 
 ## 🏥 Error Handling & Recovery
 
@@ -270,7 +263,6 @@ vaayu -u user -j 8 -r 3 -b 0.2 send user@host /dest /large/dataset/
 | Hash mismatch | Network corruption; transfer will auto-retry |
 | Host key verification failed | Use `-k` flag with proper known_hosts |
 
----
 
 ## 🧪 Testing & Validation
 
@@ -298,7 +290,6 @@ ssh user@host "sha256sum /dest/testfile.txt"
 time vaayu -u user -j 16 send user@host /dest /large/dataset/
 ```
 
----
 
 ## 📊 Project Structure
 
@@ -314,7 +305,6 @@ vaayu/
 └── cloud.py         # Cloud protocols (future)
 ```
 
----
 
 ## 🗺️ Roadmap
 
@@ -327,7 +317,6 @@ vaayu/
 - 📈 **Advanced performance metrics**
 - 🔐 **Certificate-based authentication**
 
----
 
 ## 🤝 Contributing
 
@@ -355,7 +344,6 @@ Released under the **MIT License**. See [LICENSE](LICENSE) for details.
 *Vaayu — Where files flow like air*
 
 ---
+</div>
 
 > 📝 **Note**: This README was generated with AI assistance because the developer was too lazy to write comprehensive documentation (but smart enough to make AI do it properly). 😴✨
-
-</div>
