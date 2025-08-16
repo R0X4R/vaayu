@@ -9,8 +9,8 @@ description = "A modern, secure, parallel, and resumable SSH file transfer CLI (
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
-authors = [{ name = "Singh" }]
-maintainers = [{ name = "Singh" }]
+authors = [{ name = "Eshan Singh" }]
+maintainers = [{ name = "Eshan Singh" }]
 keywords = ["ssh", "sftp", "file transfer", "resumable", "async", "zstd", "cli"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -35,10 +35,10 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/vaayu"
-"Bug Reports" = "https://github.com/yourusername/vaayu/issues"
-"Source" = "https://github.com/yourusername/vaayu"
-"Documentation" = "https://github.com/yourusername/vaayu#readme"
+"Homepage" = "https://github.com/R0X4R/vaayu"
+"Bug Reports" = "https://github.com/R0X4R/vaayu/issues"
+"Source" = "https://github.com/R0X4R/vaayu"
+"Documentation" = "https://github.com/R0X4R/vaayu#readme"
 
 [project.optional-dependencies]
 dev = [
