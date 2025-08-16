@@ -1,8 +1,7 @@
 <div align="center">
 
-# 🌪️ Vaayu
+![thumbnail](https://github.com/R0X4R/vaayu/blob/main/.github/thumbnail.png?raw=true)
 
-### *The Air Element for SSH File Transfers*
 
 **Modern • Secure • Parallel • Resumable**
 
@@ -10,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![SSH/SFTP](https://img.shields.io/badge/Protocol-SSH%2FSFTP-orange.svg)](https://www.openssh.com/)
 
-*Vaayu is the next-generation SSH file transfer tool that moves your data like air—fast, light, and omnipresent.*
+Vaayu is the next-generation SSH file transfer tool that moves your data like air - fast, light, and omnipresent.
 
 </div>
 
