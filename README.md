@@ -52,6 +52,10 @@ Built on enterprise-grade foundations:
 
 ### Installation
 
+```css
+pipx install vaayu
+```
+
 **Windows (PowerShell)**
 ```powershell
 python -m venv .venv
