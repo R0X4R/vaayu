@@ -241,9 +241,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
 
     if argv is None:
-        argv = []
+        import sys
+        argv = sys.argv[1:]
 
-    if any(arg in ['-h', '--help', '-help'] for arg in argv) and len(argv) == 1:
+    if len(argv) == 0 or (any(arg in ['-h', '--help', '-help'] for arg in argv) and len(argv) == 1):
         formatter = VaayuHelpFormatter("vaayu")
         print(formatter.format_help())
         return 0
