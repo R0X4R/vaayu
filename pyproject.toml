@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vaayu"
+version = "0.1.0"
+description = "A modern, secure, parallel, and resumable SSH file transfer CLI (scp/rsync replacement)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Singh" }]
+maintainers = [{ name = "Singh" }]
+keywords = ["ssh", "sftp", "file transfer", "resumable", "async", "zstd", "cli"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: System :: Networking",
+  "Topic :: Utilities",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+]
+
+dependencies = [
+  "asyncssh>=2.14.2",
+  "zstandard>=0.22.0",
+  "rich>=13.7.0",
+  "watchdog>=4.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/vaayu"
+"Bug Reports" = "https://github.com/yourusername/vaayu/issues"
+"Source" = "https://github.com/yourusername/vaayu"
+"Documentation" = "https://github.com/yourusername/vaayu#readme"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "mypy>=1.10.0",
+  "ruff>=0.5.0",
+]
+
+[project.scripts]
+vaayu = "vaayu.cli:main"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
