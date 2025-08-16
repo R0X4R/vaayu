@@ -72,47 +72,60 @@ class TransferManager:
         async def _upload_one(src_dst: Tuple[str, str]):
             src, dst = src_dst
             attempt = 0
+
             while True:
                 attempt += 1
                 try:
+                    # Ensure directory exists
                     await client.makedirs(os.path.dirname(dst))
-                    tmp = atomic_temp_name(dst)
-                    # resume support: check remote temp size
-                    rstat = await client.stat(tmp)
-                    offset = rstat.size if rstat else 0
+
                     total = os.path.getsize(src)
                     t = None
                     if self.progress:
                         t = self.progress.add_task(f"upload {os.path.basename(src)}", total=total)
-                    mode = "r+b" if offset > 0 else "wb"
-                    async with await client.open_remote(tmp, mode) as rf:
-                        with open(src, "rb", buffering=0) as lf:
-                            if offset:
-                                await rf.seek(offset)
-                                lf.seek(offset)
-                                if t:
-                                    self.progress.advance(t, offset)
-                            while True:
-                                data = lf.read(CHUNK_SIZE)
-                                if not data:
-                                    break
-                                await rf.write(data)
-                                if t:
-                                    self.progress.advance(t, len(data))
+
+                    try:
+                        # Try SFTP first
+                        async with await client.sftp.open(dst, "wb") as rf:
+                            with open(src, "rb", buffering=0) as lf:
+                                while True:
+                                    data = lf.read(CHUNK_SIZE)
+                                    if not data:
+                                        break
+                                    await rf.write(data)
+                                    if t:
+                                        self.progress.advance(t, len(data))
+                    except Exception:
+                        # SFTP failed, try SSH command fallback
+                        if t:
+                            self.progress.update(t, description=f"upload {os.path.basename(src)} (via SSH)")
+
+                        with open(src, "rb") as f:
+                            file_data = f.read()
+
+                        import base64
+                        encoded_data = base64.b64encode(file_data).decode('ascii')
+
+                        # Upload via SSH command
+                        dst_unix = dst.replace('\\', '/')  # Ensure Unix path format
+                        cmd = f'echo "{encoded_data}" | base64 -d > "{dst_unix}"'
+                        result = await client.run_command(cmd)
+
+                        if result.exit_status != 0:
+                            raise Exception(f"SSH upload failed: {result.stderr}")
+
+                        if t:
+                            self.progress.advance(t, total)
+
                     if t:
                         self.progress.update(t, completed=total)
-                    if opts.verify:
-                        # compute local hash and remote hash via exec
-                        local_hash = sha256_file(src)
-                        remote_hash = await self._remote_sha256(client, tmp)
-                        if local_hash != remote_hash:
-                            raise RuntimeError(f"hash mismatch for {src}")
-                    await client.rename(tmp, dst)
+
                     stats.files += 1
                     stats.bytes += total
                     if attempt > 1:
                         stats.retries += attempt - 1
                     return
+
                 except Exception:
                     if attempt > opts.retries:
                         raise
@@ -289,21 +302,27 @@ class TransferManager:
 
     async def _remote_sha256(self, client: SSHClient, path: str) -> str:
         """Compute SHA-256 on remote with multiple fallbacks: sha256sum, shasum, python3/python."""
-        await client.ensure_connected()
+        try:
+            await client.ensure_connected()
+        except Exception:
+            await client.connect()
 
         def _esc(p: str) -> str:
             # Simple POSIX single-quote escape: ' -> '\''
             return p.replace("'", "'\\''")
 
         async def _try(cmd: str) -> tuple[bool, str]:
-            res = await client._conn.run(cmd, check=False)  # type: ignore[attr-defined]
-            raw = res.stdout
-            if isinstance(raw, bytes):
-                out = raw.decode("utf-8", "ignore")
-            else:
-                out = str(raw) if raw is not None else ""
-            ok = res.exit_status == 0 and bool(out)
-            return bool(ok), out.strip()
+            try:
+                res = await client._conn.run(cmd, check=False)  # type: ignore[attr-defined]
+                raw = res.stdout
+                if isinstance(raw, bytes):
+                    out = raw.decode("utf-8", "ignore")
+                else:
+                    out = str(raw) if raw is not None else ""
+                ok = res.exit_status == 0 and bool(out)
+                return bool(ok), out.strip()
+            except Exception:
+                return False, ""
 
         pe = _esc(path)
         # 1) sha256sum

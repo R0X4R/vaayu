@@ -49,8 +49,21 @@ class SSHClient:
         self._sftp = await self._conn.start_sftp_client()
 
     async def ensure_connected(self) -> None:
-        if self._conn is None or self._conn._default_loop is None:
+        if self._conn is None:
             await self.connect()
+        else:
+            # Check if connection is still alive
+            try:
+                # Simple operation to test if connection is still valid
+                await self._conn.run("echo test", check=False, timeout=5)
+            except Exception:
+                # If any error, reconnect
+                await self.connect()
+
+    async def run_command(self, command: str) -> asyncssh.SSHCompletedProcess:
+        """Run a command on the remote server"""
+        await self.ensure_connected()
+        return await self._conn.run(command, check=False)
 
     async def close(self) -> None:
         if self._sftp:

@@ -15,9 +15,93 @@ from .utils import default_concurrency, expand_local_globs
 console = Console()
 
 
+def handle_error(e: Exception) -> int:
+    """Handle errors with beautiful, user-friendly messages"""
+    error_str = str(e)
+
+    # Connection errors
+    if any(keyword in error_str.lower() for keyword in ["connection", "network", "timeout", "unreachable", "getaddrinfo failed", "host unreachable", "no route to host"]):
+        console.print("🌐 Connection Error", style="bold red")
+        console.print("   Network connection failed", style="red")
+        console.print("💡 Try:", style="cyan")
+        console.print("   • Check your internet connection", style="cyan")
+        console.print("   • Verify the server address and port", style="cyan")
+        console.print("   • Test with: ssh user@host", style="cyan")
+        return 1
+
+    # Authentication errors
+    if any(keyword in error_str.lower() for keyword in ["authentication", "permission denied", "access denied", "login", "password"]):
+        console.print("🔐 Authentication Error", style="bold red")
+        console.print("   Invalid credentials or insufficient permissions", style="red")
+        console.print("💡 Try:", style="cyan")
+        console.print("   • Check username and password", style="cyan")
+        console.print("   • Verify SSH key permissions", style="cyan")
+        console.print("   • Test manually: ssh user@host", style="cyan")
+        console.print("   • Use -k flag to skip host key verification", style="cyan")
+        return 1
+
+    # File/path errors
+    if any(keyword in error_str.lower() for keyword in ["no such file", "file not found", "directory"]):
+        console.print("📁 File/Path Error", style="bold red")
+        console.print(f"   {error_str}", style="red")
+        console.print("💡 Try:", style="cyan")
+        console.print("   • Check file and directory paths", style="cyan")
+        console.print("   • Ensure files exist before uploading", style="cyan")
+        console.print("   • Create destination directories first", style="cyan")
+        return 1
+
+    # SFTP/Transfer errors
+    if any(keyword in error_str.lower() for keyword in ["sftp", "transfer", "upload", "download"]):
+        console.print("📤 Transfer Error", style="bold red")
+        console.print("   File transfer operation failed", style="red")
+        console.print("💡 Try:", style="cyan")
+        console.print("   • Add -n flag to skip verification", style="cyan")
+        console.print("   • Use different destination directory", style="cyan")
+        console.print("   • Check available disk space", style="cyan")
+        console.print("   • Retry with -r 10 for more retries", style="cyan")
+        return 1
+
+    # Host key verification errors
+    if "host key" in error_str.lower():
+        console.print("🔑 Host Key Verification Error", style="bold red")
+        console.print("   Server host key verification failed", style="red")
+        console.print("💡 Try:", style="cyan")
+        console.print("   • Add -k flag to skip host key verification", style="cyan")
+        console.print("   • Or connect manually first: ssh user@host", style="cyan")
+        return 1
+
+    # Compression errors
+    if "compression" in error_str.lower() or "zstd" in error_str.lower():
+        console.print("🗜️ Compression Error", style="bold red")
+        console.print("   Compression operation failed", style="red")
+        console.print("💡 Try:", style="cyan")
+        console.print("   • Remove -c flag to disable compression", style="cyan")
+        console.print("   • Try lower compression level: -z 1", style="cyan")
+        return 1
+
+    # Generic errors with helpful context
+    console.print("❌ Operation Failed", style="bold red")
+
+    # Extract meaningful error message without traceback
+    if ":" in error_str:
+        clean_error = error_str.split(":")[-1].strip()
+    else:
+        clean_error = error_str
+
+    if len(clean_error) > 100:
+        clean_error = clean_error[:97] + "..."
+
+    console.print(f"   {clean_error}", style="red")
+    console.print("💡 Try:", style="cyan")
+    console.print("   • Run with -h flag for help", style="cyan")
+    console.print("   • Check command syntax and arguments", style="cyan")
+    console.print("   • Verify server connection: ssh user@host", style="cyan")
+    return 1
+
+
 class VaayuHelpFormatter(argparse.HelpFormatter):
 
-    def __init__(self, prog):
+    def __init__(self, prog: str):
         super().__init__(prog, max_help_position=30, width=120)
 
     def format_help(self):
@@ -89,101 +173,121 @@ def _fmt_rate(bytes_: int, seconds: float) -> str:
 
 
 async def cmd_send(args: argparse.Namespace) -> None:
-    cfg = _parse_ssh_target(args.target)
-    cfg.port = args.port
-    cfg.username = args.username or cfg.username
-    cfg.password = args.password
-    cfg.key_path = args.identity
-    cfg.strict_host_key = args.verify_host_key
-    client = SSHClient(cfg)
+    try:
+        cfg = _parse_ssh_target(args.target)
+        cfg.port = args.port
+        cfg.username = args.username or cfg.username
+        cfg.password = args.password
+        cfg.key_path = args.identity
+        cfg.strict_host_key = args.verify_host_key
+        client = SSHClient(cfg)
 
-    paths = expand_local_globs(args.paths)
-    tm = TransferManager()
-    opts = TransferOptions(
-        parallel=args.parallel or default_concurrency(),
-        retries=args.retries,
-        backoff=args.backoff,
-        compress=args.compress,
-        zstd_level=args.zstd_level,
-        verify=not args.no_verify,
-    )
-    if args.watch:
-        with Progress() as progress:
-            tm.progress = progress
-            await watch_and_send(client, paths, args.dest, opts)
-    else:
-        with Progress() as progress:
-            tm.progress = progress
-            stats = await tm.send_local_to_remote(client, paths, args.dest, opts)
-        console.print(
-            f"Transferred {stats.files} files, {_fmt_bytes(stats.bytes)} in {stats.duration_s:.2f}s"
-            f" [{_fmt_rate(stats.bytes, stats.duration_s)}], retries={stats.retries}",
-            style="green",
+        paths = expand_local_globs(args.paths)
+        if not paths:
+            console.print("❌ No files found matching the specified patterns", style="red")
+            return
+
+        tm = TransferManager()
+        opts = TransferOptions(
+            parallel=args.parallel or default_concurrency(),
+            retries=args.retries,
+            backoff=args.backoff,
+            compress=args.compress,
+            zstd_level=args.zstd_level,
+            verify=not args.no_verify,
         )
-    await client.close()
+        if args.watch:
+            with Progress() as progress:
+                tm.progress = progress
+                await watch_and_send(client, paths, args.dest, opts)
+        else:
+            with Progress() as progress:
+                tm.progress = progress
+                stats = await tm.send_local_to_remote(client, paths, args.dest, opts)
+            console.print(
+                f"✅ Transferred {stats.files} files, {_fmt_bytes(stats.bytes)} in {stats.duration_s:.2f}s"
+                f" [{_fmt_rate(stats.bytes, stats.duration_s)}], retries={stats.retries}",
+                style="green",
+            )
+        await client.close()
+    except Exception as e:
+        # Add context about what operation was being performed
+        operation_context = f"uploading to {args.target}:{args.dest}"
+        raise Exception(f"Failed {operation_context}: {str(e)}") from e
 
 
 async def cmd_get(args: argparse.Namespace) -> None:
-    cfg = _parse_ssh_target(args.target)
-    cfg.port = args.port
-    cfg.username = args.username or cfg.username
-    cfg.password = args.password
-    cfg.key_path = args.identity
-    cfg.strict_host_key = args.verify_host_key
-    client = SSHClient(cfg)
+    try:
+        cfg = _parse_ssh_target(args.target)
+        cfg.port = args.port
+        cfg.username = args.username or cfg.username
+        cfg.password = args.password
+        cfg.key_path = args.identity
+        cfg.strict_host_key = args.verify_host_key
+        client = SSHClient(cfg)
 
-    tm = TransferManager()
-    opts = TransferOptions(
-        parallel=args.parallel or default_concurrency(),
-        retries=args.retries,
-        backoff=args.backoff,
-        compress=args.compress,
-        zstd_level=args.zstd_level,
-        verify=not args.no_verify,
-    )
-    with Progress() as progress:
-        tm.progress = progress
-        stats = await tm.get_remote_to_local(client, args.paths, args.dest, opts)
-    console.print(
-        f"Transferred {stats.files} files, {_fmt_bytes(stats.bytes)} in {stats.duration_s:.2f}s"
-        f" [{_fmt_rate(stats.bytes, stats.duration_s)}], retries={stats.retries}",
-        style="green",
-    )
-    await client.close()
+        tm = TransferManager()
+        opts = TransferOptions(
+            parallel=args.parallel or default_concurrency(),
+            retries=args.retries,
+            backoff=args.backoff,
+            compress=args.compress,
+            zstd_level=args.zstd_level,
+            verify=not args.no_verify,
+        )
+        with Progress() as progress:
+            tm.progress = progress
+            stats = await tm.get_remote_to_local(client, args.paths, args.dest, opts)
+        console.print(
+            f"✅ Downloaded {stats.files} files, {_fmt_bytes(stats.bytes)} in {stats.duration_s:.2f}s"
+            f" [{_fmt_rate(stats.bytes, stats.duration_s)}], retries={stats.retries}",
+            style="green",
+        )
+        await client.close()
+    except Exception as e:
+        operation_context = f"downloading from {args.target} to {args.dest}"
+        raise Exception(f"Failed {operation_context}: {str(e)}") from e
 
 
 async def cmd_relay(args: argparse.Namespace) -> None:
-    src_cfg = _parse_ssh_target(args.src)
-    dst_cfg = _parse_ssh_target(args.dst)
-    for c in (src_cfg, dst_cfg):
-        c.port = args.port
-        c.username = args.username or c.username
-        c.password = args.password
-        c.key_path = args.identity
-        c.strict_host_key = args.verify_host_key
-    src_client, dst_client = SSHClient(src_cfg), SSHClient(dst_cfg)
+    try:
+        src_cfg = _parse_ssh_target(args.src)
+        dst_cfg = _parse_ssh_target(args.dst)
+        for c in (src_cfg, dst_cfg):
+            c.port = args.port
+            c.username = args.username or c.username
+            c.password = args.password
+            c.key_path = args.identity
+            c.strict_host_key = args.verify_host_key
+        src_client, dst_client = SSHClient(src_cfg), SSHClient(dst_cfg)
 
-    pairs = [(s, d) for s, d in zip(args.src_paths, args.dst_paths)]
+        pairs = [(s, d) for s, d in zip(args.src_paths, args.dst_paths)]
+        if not pairs:
+            console.print("❌ No file pairs specified for relay transfer", style="red")
+            return
 
-    tm = TransferManager()
-    opts = TransferOptions(
-        parallel=args.parallel or default_concurrency(),
-        retries=args.retries,
-        backoff=args.backoff,
-        compress=args.compress,
-        zstd_level=args.zstd_level,
-        verify=not args.no_verify,
-    )
-    with Progress() as progress:
-        tm.progress = progress
-        stats = await tm.relay_remote_to_remote(src_client, dst_client, pairs, opts)
-    console.print(
-        f"Transferred {stats.files} files, {_fmt_bytes(stats.bytes)} in {stats.duration_s:.2f}s"
-        f" [{_fmt_rate(stats.bytes, stats.duration_s)}], retries={stats.retries}",
-        style="green",
-    )
-    await src_client.close()
-    await dst_client.close()
+        tm = TransferManager()
+        opts = TransferOptions(
+            parallel=args.parallel or default_concurrency(),
+            retries=args.retries,
+            backoff=args.backoff,
+            compress=args.compress,
+            zstd_level=args.zstd_level,
+            verify=not args.no_verify,
+        )
+        with Progress() as progress:
+            tm.progress = progress
+            stats = await tm.relay_remote_to_remote(src_client, dst_client, pairs, opts)
+        console.print(
+            f"✅ Relayed {stats.files} files, {_fmt_bytes(stats.bytes)} in {stats.duration_s:.2f}s"
+            f" [{_fmt_rate(stats.bytes, stats.duration_s)}], retries={stats.retries}",
+            style="green",
+        )
+        await src_client.close()
+        await dst_client.close()
+    except Exception as e:
+        operation_context = f"relaying from {args.src} to {args.dst}"
+        raise Exception(f"Failed {operation_context}: {str(e)}") from e
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -304,7 +408,16 @@ Examples:
 """)
         return 0
 
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit:
+        # argparse already printed error message, but let's add our beautiful error
+        console.print("\n⚠️ Invalid Command Arguments", style="bold yellow")
+        console.print("💡 Common issues:", style="cyan")
+        console.print("   • Use -P for password (uppercase), -p is for port", style="cyan")
+        console.print("   • Check argument order: vaayu send -u user -P pass user@host dest files", style="cyan")
+        console.print("   • Use vaayu -h for help", style="cyan")
+        return 1
 
     if hasattr(args, 'help') and args.help:
         formatter = VaayuHelpFormatter("vaayu")
@@ -314,6 +427,8 @@ Examples:
     try:
         asyncio.run(args.func(args))
     except KeyboardInterrupt:
-        console.print("Interrupted", style="yellow")
+        console.print("\n🛑 Operation cancelled by user", style="yellow")
         return 130
+    except Exception as e:
+        return handle_error(e)
     return 0
