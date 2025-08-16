@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -78,8 +77,6 @@ class SSHClient:
             return None
 
     async def makedirs(self, path: str) -> None:
-        # Use POSIX paths; remote servers likely use '/'
-        parts = []
         p = path.replace("\\", "/").strip("/")
         cur = ""
         for comp in p.split("/"):
@@ -87,7 +84,6 @@ class SSHClient:
             try:
                 await self.sftp.mkdir(cur)
             except Exception:
-                # Directory may already exist
                 pass
 
     async def open_remote(self, path: str, flags: str = "r") -> asyncssh.SFTPFile:

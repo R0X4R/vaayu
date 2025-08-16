@@ -187,6 +187,19 @@ async def cmd_relay(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    parent = argparse.ArgumentParser(add_help=False)
+    parent.add_argument("-u", "--username", type=str, default=None, help=argparse.SUPPRESS)
+    parent.add_argument("-p", "--port", type=int, default=22, help=argparse.SUPPRESS)
+    parent.add_argument("-P", "--password", type=str, default=None, help=argparse.SUPPRESS)
+    parent.add_argument("-i", "--identity", type=str, default=None, help=argparse.SUPPRESS)
+    parent.add_argument("-k", "--verify-host-key", action="store_true", help=argparse.SUPPRESS)
+    parent.add_argument("-j", "--parallel", type=int, default=None, help=argparse.SUPPRESS)
+    parent.add_argument("-r", "--retries", type=int, default=5, help=argparse.SUPPRESS)
+    parent.add_argument("-b", "--backoff", type=float, default=0.5, help=argparse.SUPPRESS)
+    parent.add_argument("-n", "--no-verify", action="store_true", help=argparse.SUPPRESS)
+    parent.add_argument("-c", "--compress", action="store_true", help=argparse.SUPPRESS)
+    parent.add_argument("-z", "--zstd-level", type=int, default=3, help=argparse.SUPPRESS)
+
     p = argparse.ArgumentParser(
         prog="vaayu",
         description="Secure parallel resumable SSH transfer",
@@ -194,41 +207,26 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
     )
 
-
     p.add_argument("-h", "--help", "-help", action="store_const", const=True, help=argparse.SUPPRESS)
-
-    p.add_argument("-u", "-username", "--username", type=str, default=None, help=argparse.SUPPRESS)
-    p.add_argument("-p", "-port", "--port", type=int, default=22, help=argparse.SUPPRESS)
-    p.add_argument("-P", "-password", "--password", type=str, default=None, help=argparse.SUPPRESS)
-    p.add_argument("-i", "-identity", "--identity", type=str, default=None, help=argparse.SUPPRESS)
-    p.add_argument("-k", "-verify-host-key", "--verify-host-key", action="store_true", help=argparse.SUPPRESS)
-
-    p.add_argument("-j", "-parallel", "--parallel", type=int, default=None, help=argparse.SUPPRESS)
-    p.add_argument("-r", "-retries", "--retries", type=int, default=5, help=argparse.SUPPRESS)
-    p.add_argument("-b", "-backoff", "--backoff", type=float, default=0.5, help=argparse.SUPPRESS)
-    p.add_argument("-n", "-no-verify", "--no-verify", action="store_true", help=argparse.SUPPRESS)
-
-    p.add_argument("-c", "-compress", "--compress", action="store_true", help=argparse.SUPPRESS)
-    p.add_argument("-z", "-zstd-level", "--zstd-level", type=int, default=3, help=argparse.SUPPRESS)
 
     sub = p.add_subparsers(dest="cmd", required=True, help=argparse.SUPPRESS)
 
-    sp = sub.add_parser("send", help=argparse.SUPPRESS, add_help=False)
+    sp = sub.add_parser("send", help=argparse.SUPPRESS, add_help=False, parents=[parent])
     sp.add_argument("target", help="user@host")
     sp.add_argument("dest", help="remote directory")
     sp.add_argument("paths", nargs="+", help="local files/dirs or globs")
-    sp.add_argument("-W", "-watch", "--watch", action="store_true", help=argparse.SUPPRESS)
+    sp.add_argument("-W", "--watch", action="store_true", help=argparse.SUPPRESS)
     sp.add_argument("--help", action="store_const", const=True, help=argparse.SUPPRESS)
     sp.set_defaults(func=cmd_send)
 
-    gp = sub.add_parser("get", help=argparse.SUPPRESS, add_help=False)
+    gp = sub.add_parser("get", help=argparse.SUPPRESS, add_help=False, parents=[parent])
     gp.add_argument("target", help="user@host")
     gp.add_argument("dest", help="local directory")
     gp.add_argument("paths", nargs="+", help="remote files/dirs")
     gp.add_argument("--help", action="store_const", const=True, help=argparse.SUPPRESS)
     gp.set_defaults(func=cmd_get)
 
-    rp = sub.add_parser("relay", help=argparse.SUPPRESS, add_help=False)
+    rp = sub.add_parser("relay", help=argparse.SUPPRESS, add_help=False, parents=[parent])
     rp.add_argument("src", help="src user@host")
     rp.add_argument("dst", help="dst user@host")
     rp.add_argument("src_paths", nargs="+")

@@ -5,10 +5,8 @@ import os
 import time
 import fnmatch
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
-import asyncssh
 from rich.progress import Progress, BarColumn, TimeRemainingColumn, TransferSpeedColumn, TextColumn
 
 from .ssh_client import SSHClient
